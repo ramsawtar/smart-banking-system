@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - SmartBank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="navbarContainer"></div>
+
+    <main class="py-4">
+        <div class="container">
+            <!-- Header -->
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                <div>
+                    <div class="badge bg-danger px-3 py-1 mb-2">ADMINISTRATOR PORTAL</div>
+                    <h3 class="fw-bold mb-0"><i class="bi bi-shield-shaded text-danger me-2"></i>Executive Banking Operations</h3>
+                    <p class="text-muted small mb-0">System metrics, account controls, and liquidity monitoring</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="users.html" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-people me-1"></i> Customer Directory
+                    </a>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="loadAdminDashboard()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Metrics Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card card-custom p-3 border-start border-4 border-primary">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small fw-semibold text-uppercase">Total Customers</span>
+                            <i class="bi bi-people text-primary fs-4"></i>
+                        </div>
+                        <h3 class="fw-bold my-1" id="statCustomers">0</h3>
+                        <small class="text-muted">Registered in database</small>
+                    </div>
+                </div>
+
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card card-custom p-3 border-start border-4 border-info">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small fw-semibold text-uppercase">Total Accounts</span>
+                            <i class="bi bi-wallet2 text-info fs-4"></i>
+                        </div>
+                        <h3 class="fw-bold my-1" id="statAccounts">0</h3>
+                        <small class="text-muted"><span id="statActiveAccounts" class="text-success fw-bold">0</span> Active / <span id="statBlockedAccounts" class="text-danger fw-bold">0</span> Blocked</small>
+                    </div>
+                </div>
+
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card card-custom p-3 border-start border-4 border-success">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small fw-semibold text-uppercase">Total Bank Liquidity</span>
+                            <i class="bi bi-currency-rupee text-success fs-4"></i>
+                        </div>
+                        <h3 class="fw-bold my-1 text-success" id="statTotalBalance">₹0.00</h3>
+                        <small class="text-muted">Total deposits across all accounts</small>
+                    </div>
+                </div>
+
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card card-custom p-3 border-start border-4 border-warning">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small fw-semibold text-uppercase">Transactions Logged</span>
+                            <i class="bi bi-activity text-warning fs-4"></i>
+                        </div>
+                        <h3 class="fw-bold my-1" id="statTransactions">0</h3>
+                        <small class="text-muted"><span id="statDeposits">0</span> Dep / <span id="statWithdrawals">0</span> Wdr</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manage Bank Accounts (Block/Unblock) -->
+            <div class="card card-custom p-4 mb-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+                    <div>
+                        <h5 class="fw-bold mb-0"><i class="bi bi-bank me-2 text-primary"></i>All Bank Accounts & Access Control</h5>
+                        <small class="text-muted">Monitor balance status and block/unblock customer bank accounts</small>
+                    </div>
+                    <div style="min-width: 250px;">
+                        <input type="text" class="form-control form-control-sm" id="searchAccountInput" placeholder="Filter by account # or customer...">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-custom table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Account Number</th>
+                                <th>Customer Name</th>
+                                <th>Account Type</th>
+                                <th class="text-end">Balance</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminAccountsBody">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2"></div> Loading accounts...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Bank-Wide Recent Transactions -->
+            <div class="card card-custom p-4">
+                <div class="mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2 text-danger"></i>Bank-Wide Activity Feed</h5>
+                    <small class="text-muted">System-level audit trail of deposits, withdrawals, and inter-account transfers</small>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-custom table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Account #</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Date & Time</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-end">Balance After</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTransactionsBody">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2"></div> Loading audit feed...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="footerContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        let allAccounts = [];
+
+        async function loadAdminDashboard() {
+            requireAdmin();
+            renderNavbar('admin-dashboard');
+
+            try {
+                // Load statistics
+                const statsRes = await authFetch('/api/admin/dashboard');
+                const stats = await statsRes.json();
+
+                document.getElementById('statCustomers').innerText = stats.totalCustomers;
+                document.getElementById('statAccounts').innerText = stats.totalAccounts;
+                document.getElementById('statActiveAccounts').innerText = stats.activeAccounts;
+                document.getElementById('statBlockedAccounts').innerText = stats.blockedAccounts;
+                document.getElementById('statTotalBalance').innerText = formatCurrency(stats.totalBankBalance);
+                document.getElementById('statTransactions').innerText = stats.totalTransactions;
+                document.getElementById('statDeposits').innerText = stats.totalDeposits;
+                document.getElementById('statWithdrawals').innerText = stats.totalWithdrawals;
+
+                // Render recent transactions feed
+                const txBody = document.getElementById('adminTransactionsBody');
+                if (!stats.recentTransactions || stats.recentTransactions.length === 0) {
+                    txBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No transactions in system.</td></tr>`;
+                } else {
+                    txBody.innerHTML = stats.recentTransactions.map(tx => `
+                        <tr>
+                            <td class="text-muted small">${tx.id}</td>
+                            <td class="font-monospace small">${tx.accountNumber || '-'}</td>
+                            <td>${txBadgeHTML(tx.transactionType)}</td>
+                            <td class="fw-semibold">${tx.description || '-'}</td>
+                            <td class="text-muted small">${formatDate(tx.transactionDate)}</td>
+                            <td class="text-end">${txAmountHTML(tx.transactionType, tx.amount)}</td>
+                            <td class="text-end fw-bold text-muted">${formatCurrency(tx.balanceAfter)}</td>
+                        </tr>
+                    `).join('');
+                }
+
+                // Load accounts for control
+                loadAccounts();
+            } catch (err) {
+                showAlert(err.message, 'danger');
+            }
+        }
+
+        async function loadAccounts() {
+            try {
+                const res = await authFetch('/api/admin/accounts');
+                allAccounts = await res.json();
+                renderAccountsTable();
+            } catch (err) {
+                document.getElementById('adminAccountsBody').innerHTML = `
+                    <tr><td colspan="7" class="text-center text-danger py-4">Failed to load accounts</td></tr>
+                `;
+            }
+        }
+
+        function renderAccountsTable() {
+            const tbody = document.getElementById('adminAccountsBody');
+            const searchVal = document.getElementById('searchAccountInput').value.trim().toLowerCase();
+
+            const filtered = allAccounts.filter(acc => {
+                const num = (acc.accountNumber || '').toLowerCase();
+                const user = (acc.userName || '').toLowerCase();
+                return num.includes(searchVal) || user.includes(searchVal);
+            });
+
+            if (!filtered || filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No accounts match query</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map((acc, idx) => {
+                const isBlocked = acc.status === 'BLOCKED';
+                return `
+                    <tr>
+                        <td class="text-muted small">${idx + 1}</td>
+                        <td class="fw-bold font-monospace">${acc.accountNumber}</td>
+                        <td>${acc.userName || ('User #' + (acc.userId || '-'))}</td>
+                        <td><span class="badge ${acc.accountType === 'SAVINGS' ? 'badge-savings' : 'badge-current'}">${acc.accountType}</span></td>
+                        <td class="text-end fw-bold">${formatCurrency(acc.balance)}</td>
+                        <td class="text-center">
+                            ${statusBadge(acc.status)}
+                        </td>
+                        <td class="text-end">
+                            ${isBlocked ? `
+                                <button class="btn btn-sm btn-outline-success" onclick="toggleAccountStatus(${acc.id}, 'ACTIVE')">
+                                    <i class="bi bi-unlock me-1"></i> Unblock
+                                </button>
+                            ` : `
+                                <button class="btn btn-sm btn-outline-danger" onclick="toggleAccountStatus(${acc.id}, 'BLOCKED')">
+                                    <i class="bi bi-lock me-1"></i> Block
+                                </button>
+                            `}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function toggleAccountStatus(accountId, newStatus) {
+            const actionText = newStatus === 'BLOCKED' ? 'block' : 'unblock';
+            if (!confirm(`Are you sure you want to ${actionText} this account?`)) {
+                return;
+            }
+
+            try {
+                const res = await authFetch(`/api/admin/accounts/${accountId}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ message: 'Status update failed' }));
+                    throw new Error(err.message);
+                }
+
+                showAlert(`Account successfully marked as ${newStatus}`, 'success');
+                loadAdminDashboard();
+            } catch (err) {
+                showAlert(err.message, 'danger');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAdminDashboard();
+            document.getElementById('searchAccountInput').addEventListener('input', renderAccountsTable);
+        });
+    </script>
+</body>
+</html>

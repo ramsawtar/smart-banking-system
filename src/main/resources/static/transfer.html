@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfer Money - SmartBank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="navbarContainer"></div>
+
+    <main class="py-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-7">
+                    <div class="card card-custom p-4 p-md-5">
+                        <div class="text-center mb-4">
+                            <div class="bg-primary bg-opacity-10 text-primary d-inline-flex p-3 rounded-circle mb-3">
+                                <i class="bi bi-arrow-left-right fs-1"></i>
+                            </div>
+                            <h3 class="fw-bold">Instant Fund Transfer</h3>
+                            <p class="text-muted small">Send money securely to any SmartBank account</p>
+                        </div>
+
+                        <form id="transferForm">
+                            <!-- Sender Account -->
+                            <div class="mb-3">
+                                <label for="senderAccountSelect" class="form-label fw-semibold">From Account (Sender)</label>
+                                <select class="form-select" id="senderAccountSelect" required>
+                                    <option value="">Loading accounts...</option>
+                                </select>
+                            </div>
+
+                            <div class="p-3 bg-light rounded-3 mb-3 border">
+                                <div class="d-flex justify-content-between text-muted small">
+                                    <span>Available Balance:</span>
+                                    <strong class="text-dark fs-6" id="senderBalText">₹0.00</strong>
+                                </div>
+                            </div>
+
+                            <!-- Beneficiary Quick Select -->
+                            <div class="mb-3">
+                                <label for="beneficiarySelect" class="form-label fw-semibold d-flex justify-content-between">
+                                    <span>Select from Beneficiaries (Optional)</span>
+                                    <a href="beneficiaries.html" class="small text-decoration-none">Add New</a>
+                                </label>
+                                <select class="form-select" id="beneficiarySelect">
+                                    <option value="">-- Choose saved beneficiary or enter manually below --</option>
+                                </select>
+                            </div>
+
+                            <!-- Receiver Account Number -->
+                            <div class="mb-3">
+                                <label for="receiverAccountNumber" class="form-label fw-semibold">To Account Number (Receiver)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-bank"></i></span>
+                                    <input type="text" class="form-control" id="receiverAccountNumber" placeholder="e.g. 1000987654" required>
+                                </div>
+                                <small class="text-muted">Enter the 10-digit account number of the recipient</small>
+                            </div>
+
+                            <!-- Transfer Amount -->
+                            <div class="mb-3">
+                                <label for="amount" class="form-label fw-semibold">Transfer Amount (₹)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">₹</span>
+                                    <input type="number" class="form-control form-control-lg" id="amount" min="1" step="0.01" placeholder="5000.00" required>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="mb-4">
+                                <label for="description" class="form-label fw-semibold">Description / Note</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-chat-left-text"></i></span>
+                                    <input type="text" class="form-control" id="description" placeholder="Rent, Project payment, Personal, etc." value="Fund Transfer">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 py-3 fw-semibold shadow-sm" id="transferBtn">
+                                <span class="spinner-border spinner-border-sm me-2 d-none" id="transferSpinner"></span>
+                                <i class="bi bi-send-fill me-1"></i> Confirm & Send Money
+                            </button>
+                        </form>
+
+                        <div class="text-center mt-4">
+                            <a href="dashboard.html" class="small text-muted text-decoration-none">
+                                <i class="bi bi-arrow-left me-1"></i> Return to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="footerContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        let accounts = [];
+        let beneficiaries = [];
+
+        function updateSenderBalance() {
+            const accSelect = document.getElementById('senderAccountSelect');
+            const acc = accounts.find(a => a.id == accSelect.value);
+            if (acc) {
+                document.getElementById('senderBalText').innerText = formatCurrency(acc.balance);
+            }
+        }
+
+        async function initTransferPage() {
+            requireAuth();
+            renderNavbar('transfer');
+
+            try {
+                // Load user's accounts
+                const accRes = await authFetch('/api/accounts/my');
+                accounts = await accRes.json();
+
+                const select = document.getElementById('senderAccountSelect');
+                select.innerHTML = '';
+
+                if (!accounts || accounts.length === 0) {
+                    select.innerHTML = '<option value="">No accounts found</option>';
+                    document.getElementById('transferBtn').disabled = true;
+                    return;
+                }
+
+                accounts.forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value = acc.id;
+                    opt.textContent = `${acc.accountType} - ${acc.accountNumber} (${formatCurrency(acc.balance)})`;
+                    select.appendChild(opt);
+                });
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const queryAccId = urlParams.get('accountId') || localStorage.getItem('smart_bank_active_account');
+                if (queryAccId && accounts.some(a => a.id == queryAccId)) {
+                    select.value = queryAccId;
+                } else {
+                    select.value = accounts[0].id;
+                }
+
+                select.addEventListener('change', updateSenderBalance);
+                updateSenderBalance();
+
+                // Load beneficiaries
+                const benRes = await authFetch('/api/beneficiaries/my');
+                beneficiaries = await benRes.json();
+
+                const benSelect = document.getElementById('beneficiarySelect');
+                if (beneficiaries && beneficiaries.length > 0) {
+                    beneficiaries.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.accountNumber;
+                        opt.textContent = `${b.name} (${b.bankName || 'SmartBank'} - ${b.accountNumber})`;
+                        benSelect.appendChild(opt);
+                    });
+                }
+
+                // If pre-filled from URL query ?to=1000987654
+                const toQuery = urlParams.get('to');
+                if (toQuery) {
+                    document.getElementById('receiverAccountNumber').value = toQuery;
+                    if (beneficiaries.some(b => b.accountNumber === toQuery)) {
+                        benSelect.value = toQuery;
+                    }
+                }
+
+                benSelect.addEventListener('change', (e) => {
+                    if (e.target.value) {
+                        document.getElementById('receiverAccountNumber').value = e.target.value;
+                    }
+                });
+
+            } catch (err) {
+                showAlert(err.message, 'danger');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTransferPage();
+
+            const form = document.getElementById('transferForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const senderAccountId = document.getElementById('senderAccountSelect').value;
+                const receiverAccountNumber = document.getElementById('receiverAccountNumber').value.trim();
+                const amount = parseFloat(document.getElementById('amount').value);
+                const description = document.getElementById('description').value.trim() || 'Fund Transfer';
+
+                const senderAcc = accounts.find(a => a.id == senderAccountId);
+                if (senderAcc && senderAcc.accountNumber === receiverAccountNumber) {
+                    showAlert('Cannot transfer money to the same account!', 'danger');
+                    return;
+                }
+
+                if (senderAcc && amount > Number(senderAcc.balance)) {
+                    showAlert(`Insufficient funds. Your balance is ${formatCurrency(senderAcc.balance)}`, 'danger');
+                    return;
+                }
+
+                const btn = document.getElementById('transferBtn');
+                const spinner = document.getElementById('transferSpinner');
+                btn.disabled = true;
+                spinner.classList.remove('d-none');
+
+                try {
+                    const res = await authFetch(`/api/accounts/${senderAccountId}/transfer`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            receiverAccountNumber,
+                            amount,
+                            description
+                        })
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({ message: 'Transfer failed' }));
+                        throw new Error(errData.message || 'Transfer failed');
+                    }
+
+                    showAlert(`₹${amount.toFixed(2)} transferred to ${receiverAccountNumber} successfully!`, 'success');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1200);
+                } catch (err) {
+                    showAlert(err.message, 'danger');
+                    btn.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

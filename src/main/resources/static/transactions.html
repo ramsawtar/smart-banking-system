@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction History - SmartBank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="navbarContainer"></div>
+
+    <main class="py-4">
+        <div class="container">
+            <!-- Header -->
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="bi bi-clock-history text-primary me-2"></i>Transaction History</h3>
+                    <p class="text-muted small mb-0">View, search, and audit all financial transactions across your accounts</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="exportCSV()">
+                        <i class="bi bi-download me-1"></i> Export CSV
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i> Print Statement
+                    </button>
+                </div>
+            </div>
+
+            <!-- Financial Summary Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card card-custom p-3 border-start border-4 border-success">
+                        <small class="text-muted text-uppercase fw-semibold">Total Credited (Inflow)</small>
+                        <h4 class="fw-bold text-success mb-0 mt-1" id="totalCreditsDisplay">₹0.00</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-custom p-3 border-start border-4 border-danger">
+                        <small class="text-muted text-uppercase fw-semibold">Total Debited (Outflow)</small>
+                        <h4 class="fw-bold text-danger mb-0 mt-1" id="totalDebitsDisplay">₹0.00</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-custom p-3 border-start border-4 border-primary">
+                        <small class="text-muted text-uppercase fw-semibold">Total Records</small>
+                        <h4 class="fw-bold text-primary mb-0 mt-1" id="totalCountDisplay">0</h4>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters Card -->
+            <div class="card card-custom p-3 mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="accountFilter" class="form-label small fw-semibold">Account</label>
+                        <select class="form-select form-select-sm" id="accountFilter">
+                            <option value="ALL">All My Accounts</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="typeFilter" class="form-label small fw-semibold">Transaction Type</label>
+                        <select class="form-select form-select-sm" id="typeFilter">
+                            <option value="ALL">All Types</option>
+                            <option value="DEPOSIT">Deposits</option>
+                            <option value="WITHDRAW">Withdrawals</option>
+                            <option value="TRANSFER_IN">Transfers In</option>
+                            <option value="TRANSFER_OUT">Transfers Out</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="searchInput" class="form-label small fw-semibold">Search Remarks / Note</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Filter by description...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transactions Table -->
+            <div class="card card-custom p-4">
+                <div class="table-responsive">
+                    <table class="table table-custom table-hover align-middle mb-0" id="txTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th>Description / Remarks</th>
+                                <th>Date & Time</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-end">Balance After</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsBody">
+                            <tr>
+                                <td colspan="7" class="text-center py-3" id="tableLoadingCell">
+                                    Loading transactions...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="footerContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        let allTransactions = [];
+        let filteredTransactions = [];
+        let accounts = [];
+
+        async function initTransactions() {
+            requireAuth();
+            renderNavbar('transactions');
+
+            // Show skeleton while loading
+            document.getElementById('transactionsBody').innerHTML = skeletonRows(7, 5);
+
+            try {
+                // Fetch accounts for filter dropdown
+                const accRes = await authFetch('/api/accounts/my');
+                accounts = await accRes.json();
+
+                const accFilter = document.getElementById('accountFilter');
+                if (accounts && accounts.length > 0) {
+                    accounts.forEach(a => {
+                        const opt = document.createElement('option');
+                        opt.value = a.id;
+                        opt.textContent = `${a.accountType} (${a.accountNumber})`;
+                        accFilter.appendChild(opt);
+                    });
+                }
+
+                // Fetch all transactions of current user
+                const txRes = await authFetch('/api/transactions/my');
+                allTransactions = await txRes.json();
+
+                setupFilters();
+                applyFilters();
+            } catch (err) {
+                showAlert(err.message, 'danger');
+                document.getElementById('transactionsBody').innerHTML = `
+                    <tr><td colspan="7" class="text-center text-danger py-4">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Failed to load transactions: ${err.message}
+                    </td></tr>
+                `;
+            }
+        }
+
+        function setupFilters() {
+            document.getElementById('accountFilter').addEventListener('change', applyFilters);
+            document.getElementById('typeFilter').addEventListener('change', applyFilters);
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+        }
+
+        function applyFilters() {
+            const accVal    = document.getElementById('accountFilter').value;
+            const typeVal   = document.getElementById('typeFilter').value;
+            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+
+            filteredTransactions = allTransactions.filter(tx => {
+                const matchAcc    = accVal === 'ALL' || (tx.accountId && tx.accountId.toString() === accVal);
+                const matchType   = typeVal === 'ALL' || tx.transactionType === typeVal;
+                const matchSearch = !searchVal ||
+                    (tx.description  && tx.description.toLowerCase().includes(searchVal)) ||
+                    (tx.accountNumber && tx.accountNumber.toLowerCase().includes(searchVal));
+                return matchAcc && matchType && matchSearch;
+            });
+
+            renderTable();
+            calculateSummaries();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('transactionsBody');
+
+            if (!filteredTransactions || filteredTransactions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
+                    No transactions matching your criteria.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filteredTransactions.map((tx, idx) => `
+                <tr>
+                    <td class="text-muted small">${tx.id || (idx + 1)}</td>
+                    <td class="font-monospace small">${tx.accountNumber || '-'}</td>
+                    <td>${txBadgeHTML(tx.transactionType)}</td>
+                    <td class="fw-semibold">${tx.description || '-'}</td>
+                    <td class="text-muted small">${formatDate(tx.transactionDate)}</td>
+                    <td class="text-end">${txAmountHTML(tx.transactionType, tx.amount)}</td>
+                    <td class="text-end text-muted">${formatCurrency(tx.balanceAfter)}</td>
+                </tr>`).join('');
+        }
+
+        function calculateSummaries() {
+            let credits = 0;
+            let debits = 0;
+
+            filteredTransactions.forEach(tx => {
+                const amt = Number(tx.amount);
+                if (tx.transactionType === 'DEPOSIT' || tx.transactionType === 'TRANSFER_IN') {
+                    credits += amt;
+                } else {
+                    debits += amt;
+                }
+            });
+
+            document.getElementById('totalCreditsDisplay').innerText = formatCurrency(credits);
+            document.getElementById('totalDebitsDisplay').innerText = formatCurrency(debits);
+            document.getElementById('totalCountDisplay').innerText = filteredTransactions.length;
+        }
+
+        function exportCSV() {
+            if (!filteredTransactions || filteredTransactions.length === 0) {
+                showAlert('No transactions to export', 'warning');
+                return;
+            }
+
+            const headers = ['ID', 'Account Number', 'Type', 'Description', 'Date', 'Amount', 'Balance After'];
+            const rows = filteredTransactions.map(tx => [
+                tx.id,
+                tx.accountNumber,
+                tx.transactionType,
+                `"${(tx.description || '').replace(/"/g, '""')}"`,
+                tx.transactionDate,
+                tx.amount,
+                tx.balanceAfter
+            ]);
+
+            const csvContent = 'data:text/csv;charset=utf-8,' + 
+                [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `smart_bank_transactions_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTransactions();
+        });
+    </script>
+</body>
+</html>

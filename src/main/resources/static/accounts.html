@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Accounts - SmartBank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="navbarContainer"></div>
+
+    <main class="py-4">
+        <div class="container">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="bi bi-wallet2 text-primary me-2"></i>My Bank Accounts</h3>
+                    <p class="text-muted small mb-0">Manage your Savings and Current accounts with SmartBank</p>
+                </div>
+                <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#createAccountModal">
+                    <i class="bi bi-plus-circle me-1"></i> Open New Account
+                </button>
+            </div>
+
+            <!-- Accounts Grid -->
+            <div class="row g-4 mb-4" id="accountsContainer">
+                <div class="col-12 text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="text-muted mt-2">Loading your accounts...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Account Modal -->
+    <div class="modal fade" id="createAccountModal" tabindex="-1" aria-labelledby="createAccountModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="createAccountModalLabel"><i class="bi bi-bank text-primary me-2"></i>Open a New Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="createAccountForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="accountType" class="form-label fw-semibold">Account Type</label>
+                            <select class="form-select" id="accountType" required>
+                                <option value="SAVINGS">Savings Account (Standard)</option>
+                                <option value="CURRENT">Current Account (Business/High-Volume)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="customAccountNumber" class="form-label fw-semibold">Account Number (Optional)</label>
+                            <input type="text" class="form-control" id="customAccountNumber" placeholder="Leave blank to auto-generate (10 digits)">
+                            <small class="text-muted">If left blank, a unique 10-digit number will be generated automatically.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="initialDeposit" class="form-label fw-semibold">Initial Deposit (₹)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="initialDeposit" min="0" step="0.01" value="0.00">
+                            </div>
+                            <small class="text-muted">Optional initial funds to credit immediately upon opening.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveAccountBtn">
+                            <span class="spinner-border spinner-border-sm me-1 d-none" id="saveAccountSpinner"></span>
+                            Open Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="footerContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        async function loadAccounts() {
+            requireAuth();
+            const container = document.getElementById('accountsContainer');
+            container.innerHTML = skeletonCards(3);
+
+            try {
+                const res = await authFetch('/api/accounts/my');
+                const accounts = await res.json();
+
+                if (!accounts || accounts.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12 text-center py-5">
+                            <i class="bi bi-wallet2 fs-1 text-muted"></i>
+                            <h5 class="fw-bold mt-3">No Accounts Found</h5>
+                            <p class="text-muted">You do not have any open accounts yet.</p>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createAccountModal">
+                                Open Your First Account
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = accounts.map(acc => {
+                    const isSavings = acc.accountType === 'SAVINGS';
+                    const gradient = isSavings ? 'card-gradient-primary' : 'card-gradient-accent';
+                    return `
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card card-custom h-100 ${gradient} p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="badge bg-light text-dark fw-bold px-3 py-1">${acc.accountType}</span>
+                                    ${statusBadge(acc.status)}
+                                </div>
+                                <div class="small opacity-75">Account Number</div>
+                                <h4 class="fw-bold font-monospace tracking-wide mb-3">${acc.accountNumber}</h4>
+                                <div class="small opacity-75">Available Balance</div>
+                                <h2 class="fw-bold mb-4">${formatCurrency(acc.balance)}</h2>
+                                <div class="d-flex gap-2 mt-auto pt-3 border-top border-white border-opacity-25">
+                                    <a href="deposit.html?accountId=${acc.id}" class="btn btn-sm btn-light flex-grow-1">
+                                        <i class="bi bi-arrow-down-circle text-success me-1"></i> Deposit
+                                    </a>
+                                    <a href="withdraw.html?accountId=${acc.id}" class="btn btn-sm btn-light flex-grow-1">
+                                        <i class="bi bi-arrow-up-circle text-danger me-1"></i> Withdraw
+                                    </a>
+                                    <a href="transfer.html?accountId=${acc.id}" class="btn btn-sm btn-outline-light">
+                                        <i class="bi bi-arrow-left-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                showAlert(err.message, 'danger');
+                container.innerHTML = `<div class="col-12 text-center text-danger py-4">Failed to load accounts: ${err.message}</div>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar('accounts');
+            loadAccounts();
+
+            const form = document.getElementById('createAccountForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const accountType = document.getElementById('accountType').value;
+                const accountNumber = document.getElementById('customAccountNumber').value.trim();
+                const initialDepositVal = parseFloat(document.getElementById('initialDeposit').value || '0');
+
+                const btn = document.getElementById('saveAccountBtn');
+                const spinner = document.getElementById('saveAccountSpinner');
+                btn.disabled = true;
+                spinner.classList.remove('d-none');
+
+                try {
+                    const payload = {
+                        accountType,
+                        accountNumber: accountNumber || null,
+                        initialDeposit: initialDepositVal > 0 ? initialDepositVal : null
+                    };
+
+                    const res = await authFetch('/api/accounts', {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Failed to create account');
+
+                    showAlert(`Account ${data.accountNumber} (${data.accountType}) created successfully!`, 'success');
+
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('createAccountModal'));
+                    modal.hide();
+                    form.reset();
+                    loadAccounts();
+                } catch (err) {
+                    showAlert(err.message, 'danger');
+                } finally {
+                    btn.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

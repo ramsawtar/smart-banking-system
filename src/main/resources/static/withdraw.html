@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdraw Funds - SmartBank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="navbarContainer"></div>
+
+    <main class="py-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-7 col-lg-6">
+                    <div class="card card-custom p-4 p-md-5">
+                        <div class="text-center mb-4">
+                            <div class="bg-danger bg-opacity-10 text-danger d-inline-flex p-3 rounded-circle mb-3">
+                                <i class="bi bi-arrow-up-circle fs-1"></i>
+                            </div>
+                            <h3 class="fw-bold">Withdraw Funds</h3>
+                            <p class="text-muted small">Debit funds from your chosen bank account</p>
+                        </div>
+
+                        <form id="withdrawForm">
+                            <div class="mb-3">
+                                <label for="withdrawAccountSelect" class="form-label fw-semibold">Source Account</label>
+                                <select class="form-select" id="withdrawAccountSelect" required>
+                                    <option value="">Loading accounts...</option>
+                                </select>
+                            </div>
+
+                            <div class="p-3 bg-light rounded-3 mb-3 border">
+                                <div class="d-flex justify-content-between text-muted small">
+                                    <span>Current Balance</span>
+                                    <span>Remaining Balance</span>
+                                </div>
+                                <div class="d-flex justify-content-between fw-bold fs-5 mt-1">
+                                    <span class="text-dark" id="currentBalText">₹0.00</span>
+                                    <span class="text-danger" id="remainingBalText">₹0.00</span>
+                                </div>
+                                <div id="insufficientWarning" class="text-danger small mt-2 fw-semibold d-none">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Insufficient funds for this withdrawal amount!
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="amount" class="form-label fw-semibold">Withdrawal Amount (₹)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">₹</span>
+                                    <input type="number" class="form-control form-control-lg" id="amount" min="1" step="0.01" placeholder="2000.00" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="description" class="form-label fw-semibold">Description / Remarks</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-pencil"></i></span>
+                                    <input type="text" class="form-control" id="description" placeholder="ATM, Shopping, Bills, etc." value="Cash Withdrawal">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-danger w-100 py-3 fw-semibold shadow-sm" id="withdrawBtn">
+                                <span class="spinner-border spinner-border-sm me-2 d-none" id="withdrawSpinner"></span>
+                                <i class="bi bi-check2-circle me-1"></i> Confirm & Withdraw
+                            </button>
+                        </form>
+
+                        <div class="text-center mt-4">
+                            <a href="dashboard.html" class="small text-muted text-decoration-none">
+                                <i class="bi bi-arrow-left me-1"></i> Return to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="footerContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        let accounts = [];
+
+        function updateProjectedBalance() {
+            const accSelect = document.getElementById('withdrawAccountSelect');
+            const acc = accounts.find(a => a.id == accSelect.value);
+            const amountInput = parseFloat(document.getElementById('amount').value || '0');
+            const warning = document.getElementById('insufficientWarning');
+            const withdrawBtn = document.getElementById('withdrawBtn');
+
+            if (acc) {
+                const currentBal = Number(acc.balance);
+                document.getElementById('currentBalText').innerText = formatCurrency(currentBal);
+                const remaining = currentBal - (amountInput > 0 ? amountInput : 0);
+                document.getElementById('remainingBalText').innerText = formatCurrency(remaining);
+
+                if (amountInput > currentBal) {
+                    warning.classList.remove('d-none');
+                    withdrawBtn.disabled = true;
+                } else {
+                    warning.classList.add('d-none');
+                    withdrawBtn.disabled = false;
+                }
+            }
+        }
+
+        async function initWithdrawPage() {
+            requireAuth();
+            renderNavbar('withdraw');
+
+            try {
+                const res = await authFetch('/api/accounts/my');
+                accounts = await res.json();
+
+                const select = document.getElementById('withdrawAccountSelect');
+                select.innerHTML = '';
+
+                if (!accounts || accounts.length === 0) {
+                    select.innerHTML = '<option value="">No accounts found</option>';
+                    document.getElementById('withdrawBtn').disabled = true;
+                    return;
+                }
+
+                accounts.forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value = acc.id;
+                    opt.textContent = `${acc.accountType} - ${acc.accountNumber} (${formatCurrency(acc.balance)})`;
+                    select.appendChild(opt);
+                });
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const queryAccId = urlParams.get('accountId') || localStorage.getItem('smart_bank_active_account');
+                if (queryAccId && accounts.some(a => a.id == queryAccId)) {
+                    select.value = queryAccId;
+                } else {
+                    select.value = accounts[0].id;
+                }
+
+                select.addEventListener('change', updateProjectedBalance);
+                document.getElementById('amount').addEventListener('input', updateProjectedBalance);
+                updateProjectedBalance();
+            } catch (err) {
+                showAlert(err.message, 'danger');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initWithdrawPage();
+
+            const form = document.getElementById('withdrawForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const accountId = document.getElementById('withdrawAccountSelect').value;
+                const amount = parseFloat(document.getElementById('amount').value);
+                const description = document.getElementById('description').value.trim() || 'Cash Withdrawal';
+
+                const btn = document.getElementById('withdrawBtn');
+                const spinner = document.getElementById('withdrawSpinner');
+                btn.disabled = true;
+                spinner.classList.remove('d-none');
+
+                try {
+                    const res = await authFetch(`/api/accounts/${accountId}/withdraw`, {
+                        method: 'POST',
+                        body: JSON.stringify({ amount, description })
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Withdrawal failed');
+
+                    showAlert(`₹${amount.toFixed(2)} withdrawn successfully! Remaining balance: ${formatCurrency(data.balance)}`, 'success');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1000);
+                } catch (err) {
+                    showAlert(err.message, 'danger');
+                    btn.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

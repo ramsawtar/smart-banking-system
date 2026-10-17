@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Dashboard - SmartBank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="navbarContainer"></div>
+
+    <main class="py-4">
+        <div class="container">
+            <!-- Welcome Header Card -->
+            <div class="card card-custom p-4 mb-4 card-gradient-primary">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <div>
+                        <span class="text-uppercase small tracking-wide opacity-75">Customer Portal</span>
+                        <h2 class="fw-bold mb-0" id="welcomeUser">Welcome, User</h2>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="accountSelect" class="text-white small fw-semibold text-nowrap">Active Account:</label>
+                        <select class="form-select form-select-sm bg-white text-dark border-0 shadow-sm" id="accountSelect" style="min-width: 200px;">
+                            <option value="">Loading accounts...</option>
+                        </select>
+                        <a href="accounts.html" class="btn btn-sm btn-outline-light text-nowrap" title="Add another account">
+                            <i class="bi bi-plus-lg"></i> New Account
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Primary Account Info Card -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="card card-custom h-100 p-4 border-start border-4 border-primary">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted text-uppercase fw-semibold small">Account Balance</span>
+                            <span class="badge bg-success" id="accountStatusBadge">ACTIVE</span>
+                        </div>
+                        <div class="balance-display text-primary mb-3" id="accountBalanceDisplay">₹0.00</div>
+                        <div class="d-flex justify-content-between small text-muted pt-2 border-top">
+                            <span>Account Type: <strong class="text-dark" id="accountTypeDisplay">-</strong></span>
+                            <span>Currency: <strong class="text-dark">INR (₹)</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card card-custom h-100 p-4 border-start border-4 border-info">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted text-uppercase fw-semibold small">Account Number</span>
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="copyAccountNumber()" title="Copy Account Number">
+                                <i class="bi bi-copy"></i> Copy
+                            </button>
+                        </div>
+                        <h3 class="fw-bold tracking-wider mb-3 text-navy font-monospace" id="accountNumberDisplay">----------</h3>
+                        <div class="d-flex justify-content-between small text-muted pt-2 border-top">
+                            <span>Account Holder: <strong class="text-dark" id="accountHolderDisplay">-</strong></span>
+                            <span>IFSC: <strong class="text-dark">SMRT0001001</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons Grid: Deposit | Withdraw | Transfer | Transactions -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <a href="deposit.html" class="action-btn btn-deposit shadow-sm">
+                        <i class="bi bi-arrow-down-circle"></i>
+                        <span>Deposit</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="withdraw.html" class="action-btn btn-withdraw shadow-sm">
+                        <i class="bi bi-arrow-up-circle"></i>
+                        <span>Withdraw</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="transfer.html" class="action-btn btn-transfer shadow-sm">
+                        <i class="bi bi-arrow-left-right"></i>
+                        <span>Transfer</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="transactions.html" class="action-btn btn-history shadow-sm">
+                        <i class="bi bi-clock-history"></i>
+                        <span>Transactions</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Transactions Section -->
+            <div class="card card-custom p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-0">Recent Transactions</h5>
+                        <small class="text-muted">Latest activity for selected account</small>
+                    </div>
+                    <a href="transactions.html" class="btn btn-sm btn-outline-primary">
+                        View All <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-custom table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Date & Time</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-end">Balance After</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentTransactionsBody">
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2"></div> Loading transactions...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Beneficiaries Quick Widget -->
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card card-custom p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-person-lines-fill me-2 text-primary"></i>Saved Beneficiaries</h6>
+                            <a href="beneficiaries.html" class="btn btn-sm btn-link p-0 text-decoration-none">Manage</a>
+                        </div>
+                        <div id="quickBeneficiariesList" class="list-group list-group-flush">
+                            <div class="text-muted small py-2">Loading beneficiaries...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card card-custom p-4 h-100 bg-light">
+                        <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-2 text-info"></i>Need Help?</h6>
+                        <p class="text-muted small mb-3">
+                            Transfers are processed instantly 24/7. Your account balance updates immediately after deposit, withdrawal, or fund transfer.
+                        </p>
+                        <div class="d-flex gap-2">
+                            <a href="transfer.html" class="btn btn-outline-primary btn-sm"><i class="bi bi-send me-1"></i> Send Money</a>
+                            <a href="accounts.html" class="btn btn-outline-secondary btn-sm"><i class="bi bi-plus-circle me-1"></i> Open Another Account</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="footerContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        let userAccounts = [];
+        let currentAccountId = null;
+
+        function copyAccountNumber() {
+            const accNum = document.getElementById('accountNumberDisplay').innerText;
+            if (accNum && accNum !== '----------') {
+                navigator.clipboard.writeText(accNum);
+                showAlert('Account number copied to clipboard: ' + accNum, 'success');
+            }
+        }
+
+        async function loadDashboard() {
+            requireAuth();
+            const user = getUser();
+            if (user) {
+                document.getElementById('welcomeUser').innerText = `Welcome, ${user.name}`;
+                document.getElementById('accountHolderDisplay').innerText = user.name;
+            }
+
+            try {
+                // Fetch accounts for logged-in user
+                const res = await authFetch('/api/accounts/my');
+                userAccounts = await res.json();
+
+                const select = document.getElementById('accountSelect');
+                select.innerHTML = '';
+
+                if (!userAccounts || userAccounts.length === 0) {
+                    select.innerHTML = '<option value="">No accounts found</option>';
+                    document.getElementById('accountBalanceDisplay').innerText = '₹0.00';
+                    document.getElementById('accountNumberDisplay').innerText = 'None';
+                    document.getElementById('recentTransactionsBody').innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                You do not have an open bank account yet.
+                                <br><a href="accounts.html" class="btn btn-primary btn-sm mt-2">Open Account Now</a>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                userAccounts.forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value = acc.id;
+                    opt.textContent = `${acc.accountType} - ${acc.accountNumber} (${formatCurrency(acc.balance)})`;
+                    select.appendChild(opt);
+                });
+
+                // Check stored preference or default to first
+                const savedAccId = localStorage.getItem('smart_bank_active_account');
+                const matchingAcc = userAccounts.find(a => a.id == savedAccId);
+                currentAccountId = matchingAcc ? matchingAcc.id : userAccounts[0].id;
+                select.value = currentAccountId;
+
+                select.addEventListener('change', (e) => {
+                    currentAccountId = e.target.value;
+                    localStorage.setItem('smart_bank_active_account', currentAccountId);
+                    updateAccountDisplay();
+                });
+
+                updateAccountDisplay();
+                loadBeneficiaries();
+            } catch (err) {
+                showAlert(err.message, 'danger');
+            }
+        }
+
+        function updateAccountDisplay() {
+            const acc = userAccounts.find(a => a.id == currentAccountId);
+            if (!acc) return;
+
+            document.getElementById('accountBalanceDisplay').innerText = formatCurrency(acc.balance);
+            document.getElementById('accountNumberDisplay').innerText = acc.accountNumber;
+            document.getElementById('accountTypeDisplay').innerText = acc.accountType;
+
+            const badge = document.getElementById('accountStatusBadge');
+            badge.outerHTML = statusBadge(acc.status);
+
+            loadRecentTransactions(acc.id);
+        }
+
+        async function loadRecentTransactions(accountId) {
+            const tbody = document.getElementById('recentTransactionsBody');
+            tbody.innerHTML = skeletonRows(5, 4);
+
+            try {
+                const res = await authFetch(`/api/transactions/account/${accountId}`);
+                const txs = await res.json();
+
+                if (!txs || txs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-4 d-block mb-2 opacity-50"></i>No transactions found for this account.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = txs.slice(0, 5).map(tx => `
+                    <tr>
+                        <td>${txBadgeHTML(tx.transactionType)}</td>
+                        <td class="fw-semibold">${tx.description || '-'}</td>
+                        <td class="text-muted small">${formatDate(tx.transactionDate)}</td>
+                        <td class="text-end">${txAmountHTML(tx.transactionType, tx.amount)}</td>
+                        <td class="text-end text-muted">${formatCurrency(tx.balanceAfter)}</td>
+                    </tr>`).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-danger">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Failed to load transactions</td></tr>`;
+            }
+        }
+
+        async function loadBeneficiaries() {
+            const container = document.getElementById('quickBeneficiariesList');
+            container.innerHTML = skeletonCards(3);
+            try {
+                const res = await authFetch('/api/beneficiaries/my');
+                const list = await res.json();
+                if (!list || list.length === 0) {
+                    container.innerHTML = `<div class="text-muted small py-3 text-center">
+                        <i class="bi bi-person-plus d-block fs-4 mb-1 opacity-50"></i>
+                        No beneficiaries yet. <a href="beneficiaries.html">Add one &rarr;</a></div>`;
+                    return;
+                }
+                container.innerHTML = list.slice(0, 3).map(b => `
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center border-0 border-bottom">
+                        <div>
+                            <div class="fw-semibold">${b.name}</div>
+                            <small class="text-muted">${b.bankName || 'Bank'} &bull; ${b.accountNumber}</small>
+                        </div>
+                        <a href="transfer.html?to=${b.accountNumber}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            <i class="bi bi-send me-1"></i>Send
+                        </a>
+                    </div>`).join('');
+            } catch (err) {
+                container.innerHTML = `<div class="text-danger small py-2">Could not load beneficiaries</div>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar('dashboard');
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>
