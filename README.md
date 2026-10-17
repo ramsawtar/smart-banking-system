@@ -254,8 +254,8 @@ CREATE TABLE beneficiaries (
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/smart-bank.git
-cd smart-bank/smart-bank
+git clone https://github.com/ramsawtar/smart-banking-system.git
+cd smart-banking-system
 ```
 
 ### 2. Configure Database
